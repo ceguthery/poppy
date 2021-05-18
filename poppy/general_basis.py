@@ -1,25 +1,13 @@
 """
-Zernike & Related Polynomials
+This module is a generalized example for a 2D basis (i.e. zernike.py)
 
 This module implements several sets of orthonormal polynomials for
 measuring and modeling wavefronts:
 
-    * the classical Zernike polynomials, which are orthonormal over the unit circle.
-    * 'Hexikes', orthonormal over the unit hexagon
-    * tools for creating a custom set orthonormal over a numerically supplied JWST pupil,
-        or other generalized pupil
-    * Segmented bases with piston, tip, & tilt of independent hexagonal segments.
+    * description of basis
+    * description of functions and tools
 
-For definitions of Zernikes and a basic introduction to why they are a useful way to
-
-parametrize data, see e.g.
-    Hardy's 'Adaptive Optics for Astronomical Telescopes' section 3.5.1
-    or even just the Wikipedia page is pretty decent.
-
-For definition of the hexagon and arbitrary pupil polynomials, a good reference to the
-
-Gram-Schmidt orthonormalization process as applied to this case is
-    Mahajan and Dai, 2006. Optics Letters Vol 31, 16, p 2462:
+Include infomation regarding polynomial type, cite relevant papers 
 """
 
 import inspect
@@ -37,10 +25,10 @@ from poppy.poppy_core import Wavefront
 from functools import lru_cache
 
 __all__ = [
-    'R', 'cached_zernike1', 'hex_aperture', 'hexike_basis', 'noll_indices',
-    'opd_expand', 'opd_expand_nonorthonormal', 'opd_expand_segments', 'opd_from_zernikes',
-    'str_zernike', 'zern_name', 'zernike', 'zernike1', 'zernike_basis',
-    'Segment_Piston_Basis','Segment_PTT_Basis', 'arbitrary_basis'
+    'basis', 'basis_name','R', 'cached_zernike1', 'hex_aperture', 'hexike_basis',
+    'opd_expand','opd_expand_nonorthonormal', 'opd_expand_segments', 'opd_from_zernikes',
+    'str_basis',  'zernike_basis','Segment_Piston_Basis','Segment_PTT_Basis', 
+    'arbitrary_basis'
 ]
 
 _log = logging.getLogger(__name__)
@@ -53,7 +41,7 @@ def _is_odd(integer):
     return integer & 1
 
 
-def zern_name(i):
+def basis_name(i):
     """Return a human-readable text name corresponding to some Zernike term as specified
     by `j`, the index
 
@@ -74,7 +62,7 @@ def zern_name(i):
         return "Z%d" % i
 
 
-def str_zernike(n, m):
+def str_basis(n, m):
     """Return analytic expression for a given Zernike in LaTeX syntax"""
     signed_m = int(m)
     m = int(np.abs(m))
@@ -101,53 +89,6 @@ def str_zernike(n, m):
         return "\sqrt{%d}* ( %s ) * \\sin(%d \\theta)" % (2 * (n + 1), outstr, m)
 
 
-def noll_indices(j):
-    """Convert from 1-D to 2-D indexing for Zernikes or Hexikes.
-
-    Parameters
-    ----------
-    j : int
-        Zernike function ordinate, following the convention of Noll et al. JOSA 1976.
-        Starts at 1.
-
-    """
-
-    if j < 1:
-        raise ValueError("Zernike index j must be a positive integer.")
-
-    # from i, compute m and n
-    # I'm not sure if there is an easier/cleaner algorithm or not.
-    # This seems semi-complicated to me...
-
-    # figure out which row of the triangle we're in (easy):
-    n = int(np.ceil((-1 + np.sqrt(1 + 8 * j)) / 2) - 1)
-    if n == 0:
-        m = 0
-    else:
-        nprev = (n + 1) * (n + 2) / 2  # figure out which entry in the row (harder)
-        # The rule is that the even Z obtain even indices j, the odd Z odd indices j.
-        # Within a given n, lower values of m obtain lower j.
-
-        resid = int(j - nprev - 1)
-
-        if _is_odd(j):
-            sign = -1
-        else:
-            sign = 1
-
-        if _is_odd(n):
-            row_m = [1, 1]
-        else:
-            row_m = [0]
-
-        for i in range(int(np.floor(n / 2.))):
-            row_m.append(row_m[-1] + 2)
-            row_m.append(row_m[-1])
-
-        m = row_m[resid] * sign
-
-    _log.debug("J=%d:\t(n=%d, m=%d)" % (j, n, m))
-    return n, m
 
 
 def R(n, m, rho):
@@ -175,7 +116,7 @@ def R(n, m, rho):
         return output
 
 
-def zernike(n, m, npix=100, rho=None, theta=None, outside=np.nan,
+def basis(n, m, npix=100, rho=None, theta=None, outside=np.nan,
             noll_normalize=True, **kwargs):
     """Return the Zernike polynomial Z[m,n] for a given pupil.
 
@@ -264,7 +205,7 @@ def zernike(n, m, npix=100, rho=None, theta=None, outside=np.nan,
     return zernike_result
 
 
-def zernike1(j, **kwargs):
+def basis1(j, **kwargs):
     """ Return the Zernike polynomial Z_j for pupil points {r,theta}.
 
     For this function the desired Zernike is specified by a single index j.
@@ -287,8 +228,9 @@ def zernike1(j, **kwargs):
     zern : 2D numpy array
         Z_j evaluated at each (rho, theta)
     """
-    n, m = noll_indices(j)
-    return zernike(n, m, **kwargs)
+    n =1
+    m =1
+    return basis(n, m, **kwargs)
 
 
 @lru_cache()
@@ -305,8 +247,8 @@ def cached_zernike1(j, shape, pixelscale, pupil_radius, outside=np.nan, noll_nor
     rho = r / pupil_radius
     theta = np.arctan2(y / pupil_radius, x / pupil_radius)
 
-    n, m = noll_indices(j)
-    result = zernike(n, m, rho=rho, theta=theta, outside=outside, noll_normalize=noll_normalize)
+    n, m = [1,1]
+    result = basis(n, m, rho=rho, theta=theta, outside=outside, noll_normalize=noll_normalize)
     result.flags.writeable = False  # don't let caller modify cached copy in-place
     return result
 
