@@ -48,6 +48,5 @@ def kolmogorov(s):
     #pick just one of the two phase screens for present purposes scale to 
     #something that will give reasonable ansewrs on a 1024 grid with 256 pupil
     ph=ph[:,:,1]*3
-    plt.imshow(ph)
     np.var(np.var(ph))
     return ph 
